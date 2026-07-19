@@ -130,7 +130,7 @@ export function useHoldEngine() {
         clearCountdown();
         onDone();
       }
-    }, 1000);
+    }, 750);
   }
 
   function launchClock() {
