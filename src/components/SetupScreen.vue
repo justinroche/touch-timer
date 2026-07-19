@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { formatSeconds } from '../composables/formatClock';
+import StepIcon from './StepIcon.vue';
 
 const emit = defineEmits(['start']);
 
@@ -54,20 +55,32 @@ function start() {
     <div class="field">
       <div class="field-label">Fingers needed</div>
       <div class="stepper">
-        <button @click="decFingers">&minus;</button>
+        <button @click="decFingers">
+          <StepIcon />
+        </button>
         <div class="stepper-value">{{ requiredFingers }}</div>
-        <button @click="incFingers">&plus;</button>
+        <button @click="incFingers">
+          <StepIcon plus />
+        </button>
       </div>
     </div>
 
-    <div class="field" v-if="mode === 'timer'">
-      <div class="field-label">Starting time</div>
-      <div class="stepper">
-        <button @click="decDuration">&minus;</button>
-        <div class="stepper-value">{{ durationLabel }}</div>
-        <button @click="incDuration">&plus;</button>
+    <transition name="mode-fade">
+      <div class="field-collapse" v-if="mode === 'timer'">
+        <div class="field">
+          <div class="field-label">Starting time</div>
+          <div class="stepper">
+            <button @click="decDuration">
+              <StepIcon />
+            </button>
+            <div class="stepper-value">{{ durationLabel }}</div>
+            <button @click="incDuration">
+              <StepIcon plus />
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
+    </transition>
 
     <div class="field">
       <label class="checkbox-row">
@@ -126,6 +139,9 @@ h1 {
   font-weight: 500;
   padding: 12px 0;
   cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 }
 .segmented button.active {
   background: var(--amber);
@@ -144,16 +160,47 @@ h1 {
   border: 1px solid var(--line);
   background: var(--ink-2);
   color: var(--bone);
-  font-size: 20px;
-  font-family: 'IBM Plex Mono', monospace;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
 }
+.stepper button svg {
+  width: 18px;
+  height: 18px;
+}
 .stepper button:active {
   background: #26221a;
   transform: scale(0.94);
+}
+.field-collapse {
+  width: 100%;
+  max-width: 320px;
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: 28px;
+  overflow: hidden;
+  transition:
+    grid-template-rows 0.25s ease,
+    margin-bottom 0.25s ease,
+    opacity 0.2s ease;
+}
+.field-collapse > .field {
+  margin-bottom: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.mode-fade-enter-from,
+.mode-fade-leave-to {
+  grid-template-rows: 0fr;
+  margin-bottom: 0;
+  opacity: 0;
+}
+.mode-fade-enter-to,
+.mode-fade-leave-from {
+  grid-template-rows: 1fr;
+  margin-bottom: 28px;
+  opacity: 1;
 }
 .stepper-value {
   font-family: 'IBM Plex Mono', monospace;
