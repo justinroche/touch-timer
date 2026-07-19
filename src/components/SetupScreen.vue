@@ -7,6 +7,7 @@ const emit = defineEmits(['start']);
 const mode = ref('timer');
 const requiredFingers = ref(4);
 const durationSec = ref(60);
+const countdownEnabled = ref(true);
 
 const durationLabel = computed(() => formatSeconds(durationSec.value * 1000));
 
@@ -28,6 +29,7 @@ function start() {
     mode: mode.value,
     requiredFingers: requiredFingers.value,
     durationMs: durationSec.value * 1000,
+    countdownEnabled: countdownEnabled.value,
   });
 }
 </script>
@@ -65,6 +67,13 @@ function start() {
         <div class="stepper-value">{{ durationLabel }}</div>
         <button @click="incDuration">&plus;</button>
       </div>
+    </div>
+
+    <div class="field">
+      <label class="checkbox-row">
+        <input type="checkbox" v-model="countdownEnabled" />
+        <span>Countdown</span>
+      </label>
     </div>
 
     <button class="start-btn" @click="start">Start</button>
@@ -152,6 +161,23 @@ h1 {
   font-size: 30px;
   min-width: 96px;
   color: var(--amber);
+}
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  color: var(--bone-dim);
+}
+.checkbox-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--amber);
+  cursor: pointer;
 }
 .start-btn {
   margin-top: 10px;

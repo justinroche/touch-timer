@@ -4,37 +4,29 @@ import { formatDeciseconds } from '../composables/formatClock';
 
 const props = defineProps({
   engine: { type: Object, required: true },
-  reason: { type: String, required: true }, // 'stopped' | 'timeUp'
 });
-const emit = defineEmits(['again']);
+const emit = defineEmits(['resume', 'exit']);
 
 const isTimer = computed(() => props.engine.mode === 'timer');
+const isThresholdPause = computed(
+  () => props.engine.stopReason === 'threshold',
+);
 
-const heading = computed(() => {
-  if (props.reason === 'stopped') return 'Locked in';
-  if (props.reason === 'timeUp') return "Time's up";
-});
-
-const subtext = computed(() => {
-  if (props.reason === 'stopped') {
-    return 'Everyone got a finger down.';
-  }
-  if (props.reason === 'timeUp') {
-    return 'The clock ran out.';
-  }
-});
-
-const finalTime = computed(() => {
+const displayTime = computed(() => {
   if (isTimer.value) return formatDeciseconds(props.engine.remainingMs);
   return formatDeciseconds(props.engine.elapsedMs);
 });
+
+const heading = computed(() =>
+  isThresholdPause.value ? 'Paused' : "Time's up",
+);
 </script>
 
 <template>
-  <div class="done">
-    <div class="mark" :class="{ dim: reason !== 'stopped' }">
+  <div class="paused">
+    <div class="mark" :class="{ dim: !isThresholdPause }">
       <svg
-        v-if="reason === 'stopped'"
+        v-if="isThresholdPause"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#3ECFB8"
@@ -42,7 +34,8 @@ const finalTime = computed(() => {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
-        <path d="M4 12l5 5L20 6" />
+        <rect x="6" y="5" width="4" height="14" rx="1" />
+        <rect x="14" y="5" width="4" height="14" rx="1" />
       </svg>
       <svg
         v-else
@@ -57,16 +50,30 @@ const finalTime = computed(() => {
       </svg>
     </div>
     <h2>{{ heading }}</h2>
-    <p class="sub">{{ subtext }}</p>
 
-    <div class="final-time">{{ finalTime }}</div>
+    <div class="final-time">{{ displayTime }}</div>
 
-    <button class="again-btn" @click="emit('again')">Play again</button>
+    <div class="actions">
+      <button
+        v-if="isThresholdPause"
+        class="resume-btn"
+        @click="emit('resume')"
+      >
+        Resume
+      </button>
+      <button
+        class="exit-btn"
+        :class="{ solo: !isThresholdPause }"
+        @click="emit('exit')"
+      >
+        {{ isThresholdPause ? 'Exit' : 'New round' }}
+      </button>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.done {
+.paused {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -98,12 +105,6 @@ h2 {
   font-size: 36px;
   margin: 0 0 8px;
 }
-.sub {
-  color: var(--bone-dim);
-  font-size: 14px;
-  margin: 0 0 30px;
-  max-width: 300px;
-}
 .final-time {
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;
@@ -112,14 +113,39 @@ h2 {
   margin-bottom: 40px;
   letter-spacing: -0.02em;
 }
-.again-btn {
+.actions {
+  display: flex;
+  gap: 14px;
+}
+.resume-btn {
   padding: 15px 40px;
   border-radius: 999px;
-  border: 1px solid var(--bone);
-  background: transparent;
-  color: var(--bone);
+  border: none;
+  background: var(--teal);
+  color: #0a2420;
   font-weight: 600;
   font-size: 14px;
   cursor: pointer;
+}
+.resume-btn:active {
+  transform: scale(0.97);
+}
+.exit-btn {
+  padding: 15px 32px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--bone-dim);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.exit-btn.solo {
+  padding: 15px 40px;
+  border: 1px solid var(--bone);
+  color: var(--bone);
+}
+.exit-btn:active {
+  transform: scale(0.97);
 }
 </style>

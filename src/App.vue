@@ -1,18 +1,19 @@
 <script setup>
-import { reactive, ref } from 'vue';
+import { reactive, ref, watch } from 'vue';
 import { useHoldEngine } from './composables/useHoldEngine';
 import SetupScreen from './components/SetupScreen.vue';
 import GameScreen from './components/GameScreen.vue';
-import DoneScreen from './components/DoneScreen.vue';
+import PausedScreen from './components/PausedScreen.vue';
 
 const engine = reactive(useHoldEngine());
-const screen = ref('setup'); // 'setup' | 'game' | 'done'
-const finishReason = ref('timeUp');
+const screen = ref('setup'); // 'setup' | 'game' | 'paused'
 
-engine.onFinish((reason) => {
-  finishReason.value = reason;
-  screen.value = 'done';
-});
+watch(
+  () => engine.paused,
+  (isPaused) => {
+    if (isPaused) screen.value = 'paused';
+  },
+);
 
 function handleStart(settings) {
   engine.start(settings);
@@ -24,7 +25,13 @@ function handleCancel() {
   screen.value = 'setup';
 }
 
-function handleAgain() {
+function handleResume() {
+  engine.resume();
+  screen.value = 'game';
+}
+
+function handleExit() {
+  engine.exit();
   screen.value = 'setup';
 }
 </script>
@@ -39,12 +46,12 @@ function handleAgain() {
         :engine="engine"
         @cancel="handleCancel"
       />
-      <DoneScreen
+      <PausedScreen
         v-else
-        key="done"
+        key="paused"
         :engine="engine"
-        :reason="finishReason"
-        @again="handleAgain"
+        @resume="handleResume"
+        @exit="handleExit"
       />
     </transition>
   </div>

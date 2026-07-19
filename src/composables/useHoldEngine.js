@@ -6,17 +6,22 @@ export function useHoldEngine() {
   const mode = ref('timer'); // 'timer' | 'stopwatch'
   const requiredFingers = ref(4);
   const durationMs = ref(60000);
+  const countdownEnabled = ref(true);
 
   const remainingMs = ref(durationMs.value);
   const elapsedMs = ref(0);
-  const holding = ref(false); // true = threshold reached
+
   const running = ref(false);
+  const paused = ref(false);
+  const pausing = ref(false);
+  const stopReason = ref(null); // 'threshold' | 'timeUp'
+  const counting = ref(false); // true = showing the 3-2-1 countdown
+  const countdownValue = ref(0);
 
   let lastTs = null;
   let rafId = null;
+  let countdownIntervalId = null;
   let lockTimeoutId = null;
-  let settled = false;
-  let finishHandler = null;
 
   // Small pause between hitting the threshold and actually leaving the game screen
   const LOCK_DELAY_MS = 300;
@@ -26,15 +31,15 @@ export function useHoldEngine() {
   }
 
   function addPointer(id, x, y) {
-    if (!running.value || holding.value) return;
+    if (!running.value || paused.value || pausing.value) return;
     pointers.push({ id, x, y });
     if (fingerCount() >= requiredFingers.value) {
-      lockIn();
+      pauseFor('threshold');
     }
   }
 
   function movePointer(id, x, y) {
-    if (holding.value) return;
+    if (paused.value || pausing.value) return;
     const p = pointers.find((p) => p.id === id);
     if (p) {
       p.x = x;
@@ -43,7 +48,7 @@ export function useHoldEngine() {
   }
 
   function removePointer(id) {
-    if (holding.value) return;
+    if (paused.value || pausing.value) return;
     const idx = pointers.findIndex((p) => p.id === id);
     if (idx > -1) pointers.splice(idx, 1);
   }
@@ -52,14 +57,42 @@ export function useHoldEngine() {
     pointers.splice(0, pointers.length);
   }
 
-  function lockIn() {
-    if (holding.value) return;
-    holding.value = true;
-    if (rafId) {
-      cancelAnimationFrame(rafId);
-      rafId = null;
+  function clearCountdown() {
+    if (countdownIntervalId) clearInterval(countdownIntervalId);
+    countdownIntervalId = null;
+    counting.value = false;
+  }
+
+  function clearRaf() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function clearLockTimeout() {
+    if (lockTimeoutId) clearTimeout(lockTimeoutId);
+    lockTimeoutId = null;
+    pausing.value = false;
+  }
+
+  function pauseFor(reason) {
+    if (paused.value || pausing.value) return;
+    running.value = false;
+    clearRaf();
+
+    if (reason === 'threshold') {
+      pausing.value = true;
+      stopReason.value = reason;
+      lockTimeoutId = setTimeout(() => {
+        pausing.value = false;
+        lockTimeoutId = null;
+        paused.value = true;
+        clearPointers();
+      }, LOCK_DELAY_MS);
+    } else {
+      stopReason.value = reason;
+      paused.value = true;
+      clearPointers();
     }
-    lockTimeoutId = setTimeout(() => finish('stopped'), LOCK_DELAY_MS);
   }
 
   function tick(ts) {
@@ -72,7 +105,7 @@ export function useHoldEngine() {
       remainingMs.value -= dt;
       if (remainingMs.value <= 0) {
         remainingMs.value = 0;
-        finish('timeUp');
+        pauseFor('timeUp');
         return;
       }
     } else {
@@ -82,47 +115,69 @@ export function useHoldEngine() {
     rafId = requestAnimationFrame(tick);
   }
 
-  function start({ mode: m, requiredFingers: rf, durationMs: dur }) {
-    mode.value = m;
-    requiredFingers.value = rf;
-    durationMs.value = dur || 60000;
-    remainingMs.value = durationMs.value;
-    elapsedMs.value = 0;
-    holding.value = false;
-    lastTs = null;
-    settled = false;
-    if (lockTimeoutId) clearTimeout(lockTimeoutId);
-    lockTimeoutId = null;
+  // Used for both the initial start and for resume
+  function beginRun(onDone) {
     clearPointers();
+    if (!countdownEnabled.value) {
+      onDone();
+      return;
+    }
+    counting.value = true;
+    countdownValue.value = 3;
+    countdownIntervalId = setInterval(() => {
+      countdownValue.value -= 1;
+      if (countdownValue.value <= 0) {
+        clearCountdown();
+        onDone();
+      }
+    }, 1000);
+  }
+
+  function launchClock() {
     running.value = true;
+    lastTs = null;
     rafId = requestAnimationFrame(tick);
   }
 
-  function finish(reason) {
-    if (settled) return;
-    settled = true;
+  function stopAll() {
     running.value = false;
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = null;
-    if (lockTimeoutId) clearTimeout(lockTimeoutId);
-    lockTimeoutId = null;
+    paused.value = false;
+    stopReason.value = null;
+    clearRaf();
+    clearCountdown();
+    clearLockTimeout();
     clearPointers();
-    if (finishHandler) finishHandler(reason);
+  }
+
+  function start({
+    mode: m,
+    requiredFingers: rf,
+    durationMs: dur,
+    countdownEnabled: cd,
+  }) {
+    mode.value = m;
+    requiredFingers.value = rf;
+    durationMs.value = dur || 60000;
+    countdownEnabled.value = cd ?? true;
+    remainingMs.value = durationMs.value;
+    elapsedMs.value = 0;
+    stopAll();
+    beginRun(launchClock);
+  }
+
+  function resume() {
+    if (!paused.value || stopReason.value !== 'threshold') return;
+    paused.value = false;
+    stopReason.value = null;
+    beginRun(launchClock);
+  }
+
+  function exit() {
+    stopAll();
   }
 
   function reset() {
-    settled = true;
-    running.value = false;
-    holding.value = false;
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = null;
-    if (lockTimeoutId) clearTimeout(lockTimeoutId);
-    lockTimeoutId = null;
-    clearPointers();
-  }
-
-  function onFinish(fn) {
-    finishHandler = fn;
+    stopAll();
   }
 
   return {
@@ -130,16 +185,22 @@ export function useHoldEngine() {
     mode,
     requiredFingers,
     durationMs,
+    countdownEnabled,
     remainingMs,
     elapsedMs,
-    holding,
     running,
+    paused,
+    pausing,
+    stopReason,
+    counting,
+    countdownValue,
     addPointer,
     movePointer,
     removePointer,
     clearPointers,
     start,
+    resume,
+    exit,
     reset,
-    onFinish,
   };
 }

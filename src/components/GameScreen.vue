@@ -15,11 +15,6 @@ const displayTime = computed(() => {
   return formatDeciseconds(props.engine.elapsedMs);
 });
 
-const stateLabel = computed(() => {
-  if (props.engine.holding) return 'Locked in';
-  return props.engine.mode === 'timer' ? 'Counting down' : 'Running';
-});
-
 function onPointerDown(e) {
   if (!props.engine.running) return;
   e.preventDefault();
@@ -38,7 +33,7 @@ function onPointerUp(e) {
   <div
     ref="zone"
     class="touch-zone"
-    :class="{ holding: engine.holding }"
+    :class="{ pausing: engine.pausing }"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
@@ -46,15 +41,25 @@ function onPointerUp(e) {
     @contextmenu.prevent
   >
     <div class="topbar">
-      <div class="count-pill">
-        <b>{{ engine.pointers.length }}</b
-        >&nbsp;of {{ engine.requiredFingers }} fingers down
-      </div>
+      <template v-if="engine.running">
+        <div class="count-pill">
+          <b>{{ engine.pointers.length }}</b
+          >&nbsp;of {{ engine.requiredFingers }} fingers down
+        </div>
+      </template>
     </div>
 
     <div class="center-readout">
-      <div class="time-text">{{ displayTime }}</div>
-      <div class="state-text">{{ stateLabel }}</div>
+      <template v-if="engine.counting">
+        <transition name="countdown-pop" mode="out-in">
+          <div class="countdown-num" :key="engine.countdownValue">
+            {{ engine.countdownValue }}
+          </div>
+        </transition>
+      </template>
+      <template v-else>
+        <div class="time-text">{{ displayTime }}</div>
+      </template>
     </div>
 
     <transition-group name="mark" tag="div">
@@ -62,7 +67,7 @@ function onPointerUp(e) {
         v-for="p in engine.pointers"
         :key="p.id"
         class="finger-mark"
-        :class="{ stopped: engine.holding }"
+        :class="{ locked: engine.pausing }"
         :style="{ left: p.x + 'px', top: p.y + 'px' }"
       />
     </transition-group>
@@ -122,17 +127,34 @@ function onPointerUp(e) {
   color: var(--bone);
   transition: color 0.25s ease;
 }
-.state-text {
-  margin-top: 6px;
+.countdown-num {
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+  font-weight: 600;
+  font-size: clamp(70px, 22vw, 140px);
+  letter-spacing: -0.02em;
   color: var(--amber);
-  transition: color 0.25s ease;
+  line-height: 1;
 }
-.touch-zone.holding .time-text,
-.touch-zone.holding .state-text {
+.countdown-pop-enter-active {
+  transition:
+    transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.2s ease;
+}
+.countdown-pop-leave-active {
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+.countdown-pop-enter-from {
+  transform: scale(0.6);
+  opacity: 0;
+}
+.countdown-pop-leave-to {
+  transform: scale(1.15);
+  opacity: 0;
+}
+.touch-zone.pausing .time-text,
+.touch-zone.pausing .state-text {
   color: var(--teal);
 }
 
@@ -157,7 +179,7 @@ function onPointerUp(e) {
     box-shadow 0.25s ease,
     background 0.25s ease;
 }
-.finger-mark.stopped {
+.finger-mark.locked {
   background: var(--teal);
   box-shadow:
     0 0 0 3px var(--teal),
