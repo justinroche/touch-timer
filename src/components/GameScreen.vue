@@ -162,8 +162,8 @@ function onPointerUp(e) {
   position: absolute;
   top: 0;
   left: 0;
-  width: 6px;
-  height: 6px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: var(--amber);
   pointer-events: none;
