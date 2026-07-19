@@ -54,7 +54,7 @@ function start() {
     </div>
 
     <div class="field">
-      <div class="field-label">Fingers needed</div>
+      <div class="field-label">Players</div>
       <div class="stepper">
         <button @click="decFingers">
           <StepIcon />
