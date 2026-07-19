@@ -1,14 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { formatSeconds } from '../composables/formatClock';
+import {
+  mode,
+  requiredFingers,
+  durationSec,
+  countdownEnabled,
+} from '../composables/useGameSettings';
 import StepIcon from './StepIcon.vue';
 
 const emit = defineEmits(['start']);
-
-const mode = ref('timer');
-const requiredFingers = ref(4);
-const durationSec = ref(60);
-const countdownEnabled = ref(true);
 
 const durationLabel = computed(() => formatSeconds(durationSec.value * 1000));
 
