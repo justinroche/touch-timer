@@ -69,7 +69,7 @@ function start() {
     <transition name="mode-fade">
       <div class="field-collapse" v-if="mode === 'timer'">
         <div class="field">
-          <div class="field-label">Starting time</div>
+          <div class="field-label">Time</div>
           <div class="stepper">
             <button @click="decDuration">
               <StepIcon />
