@@ -41,7 +41,7 @@ function onPointerUp(e) {
     @contextmenu.prevent
   >
     <div class="topbar">
-      <template v-if="engine.running">
+      <template v-if="engine.running || engine.pausing">
         <div class="count-pill">
           <b>{{ engine.pointers.length }}</b
           >&nbsp;of {{ engine.requiredFingers }} fingers down
@@ -50,16 +50,16 @@ function onPointerUp(e) {
     </div>
 
     <div class="center-readout">
-      <template v-if="engine.counting">
-        <transition name="countdown-pop" mode="out-in">
-          <div class="countdown-num" :key="engine.countdownValue">
-            {{ engine.countdownValue }}
-          </div>
-        </transition>
-      </template>
-      <template v-else>
-        <div class="time-text">{{ displayTime }}</div>
-      </template>
+      <transition name="countdown-pop" mode="out-in">
+        <div
+          v-if="engine.counting"
+          class="countdown-num"
+          :key="'count-' + engine.countdownValue"
+        >
+          {{ engine.countdownValue }}
+        </div>
+        <div v-else class="time-text" key="clock">{{ displayTime }}</div>
+      </transition>
     </div>
 
     <transition-group name="mark" tag="div">
@@ -135,24 +135,46 @@ function onPointerUp(e) {
   color: var(--amber);
   line-height: 1;
 }
-.countdown-pop-enter-active {
+.countdown-pop-enter-active.countdown-num {
   transition:
     transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1),
     opacity 0.2s ease;
 }
-.countdown-pop-leave-active {
+.countdown-pop-leave-active.countdown-num {
   transition:
     transform 0.18s ease,
     opacity 0.18s ease;
 }
-.countdown-pop-enter-from {
+.countdown-pop-enter-from.countdown-num {
   transform: scale(0.6);
   opacity: 0;
 }
-.countdown-pop-leave-to {
+.countdown-pop-leave-to.countdown-num {
   transform: scale(1.15);
   opacity: 0;
 }
+
+.countdown-pop-enter-active.time-text {
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s ease,
+    filter 0.3s ease;
+}
+.countdown-pop-leave-active.time-text {
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+.countdown-pop-enter-from.time-text {
+  transform: scale(1.4);
+  opacity: 0;
+  filter: blur(8px);
+}
+.countdown-pop-leave-to.time-text {
+  transform: scale(0.9);
+  opacity: 0;
+}
+
 .touch-zone.pausing .time-text,
 .touch-zone.pausing .state-text {
   color: var(--teal);
